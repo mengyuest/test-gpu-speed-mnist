@@ -6,6 +6,9 @@ print("Using GPU: "+sys.argv[1])
 
 os.environ["CUDA_VISIBLE_DEVICES"] = sys.argv[1]
 
+tf.logging.set_verbosity(tf.logging.WARN)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 # parameters
 learning_rate=0.0002
 n_trainset=800
