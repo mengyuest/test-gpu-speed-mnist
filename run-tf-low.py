@@ -12,8 +12,8 @@ n_trainset=800
 batch_size=4
 height=120
 width=160
-n_train_iter=10000
-n_print_interval=1000
+n_train_iter=1000
+n_print_interval=100
 n_classes=50
 
 # define the graph IO
