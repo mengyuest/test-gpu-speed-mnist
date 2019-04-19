@@ -1,5 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
+print("Using GPU: "+sys.argv[1])
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = sys.argv[1]
+
 import tensorflow as tf
 import numpy as np
 
