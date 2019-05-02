@@ -21,14 +21,15 @@ class ModelBuilder():
                 self._classification_gt = tf.placeholder(tf.float32, [None, 10])
             with tf.name_scope("IMG_INPUT"):
                 self._img_input = tf.placeholder(tf.float32, shape=(None, 28, 28, 1))
-
-        self._build_models()
+        
         self._pred = None
         self._labels = None
         self._loss = None
         self._train_optim=None
         self._optimizer = None
         self.update_ops = None
+
+        self._build_models()
 
     def _build_models(self):
         print("BUILDING THE MODEL")
@@ -129,12 +130,17 @@ class ModelBuilder():
 
     #loss, pred = model.train_step(sess, images, gt_classes_hot)
     def train_step(self, sess, images, gt_classes_hot):
-        loss, _, pred_logit, pred_labels = sess.run(
+        # print(images)
+        # print(gt_classes_hot)
+        # exit()
+        #print(self._loss, self._train_optim, self._classifier_pred, self._classifier_labels)
+        
+        loss, _, pred_logit, pred = sess.run(
             [
                 self._loss,
                 self._train_optim,
+                self._classifier_logit,
                 self._classifier_pred,
-                self._classifier_labels,
             ],
             feed_dict={
                 self._img_input: images,
@@ -142,15 +148,15 @@ class ModelBuilder():
                 self._is_training: True,
             })
         
-        return loss, pred_logit, pred_labels
+        return loss, pred_logit, pred
     
     #loss, logit, pred = model.validation_step(sess, images, gt_classes_hot)
     def validation_step(self, sess, images, gt_classes_hot):
-        loss, pred_logit, pred_labels = sess.run(
+        loss, pred_logit, pred = sess.run(
             [
                 self._loss,
+                self._classifier_logit,
                 self._classifier_pred,
-                self._classifier_labels,
             ],
             feed_dict={
                 self._img_input: images,
@@ -158,18 +164,27 @@ class ModelBuilder():
                 self._is_training: False,
             })
         
-        return loss, pred_logit, pred_labels
+        return loss, pred_logit, pred
 
 class CnnModel():
     def __init__(self, args, scope, img_input, _is_training):
         self.args = args
         with tf.variable_scope("bottom"):#("%s/bottom"%(scope)):
-            conv1 = tf.layers.conv2d(img_input, 32, [3,3], [1,1], "SAME", name="conv2d_1")
-            pool1 = tf.layers.max_pooling2d(conv1, [3,3], [2,2], "SAME", name="maxpool1")
-            conv2 = tf.layers.conv2d(pool1, 64, [3,3], [1,1], "SAME", name="conv2d_2")
-            pool2 = tf.layers.max_pooling2d(conv2, [3,3], [2,2], "SAME", name="maxpool2")
-            conv3 = tf.layers.conv2d(pool2, 64, [3,3], [1,1], "SAME", name="conv2d_3")
-            self._features = tf.layers.max_pooling2d(conv3, [3,3], [2,2],"SAME", name="maxpool3")
+            conv1 = tf.layers.conv2d(img_input, 128, [5,5], [1,1], "SAME", name="conv2d_1")
+            pool1 = tf.layers.max_pooling2d(conv1, [5,5], [1,1], "SAME", name="maxpool_1")
+            conv2 = tf.layers.conv2d(pool1, 128, [3,3], [1,1], "SAME", name="conv2d_2")
+            pool2 = tf.layers.max_pooling2d(conv2, [3,3], [1,1], "SAME", name="maxpool_2")
+            conv3 = tf.layers.conv2d(pool2, 256, [3,3], [1,1], "SAME", name="conv2d_3")
+            pool3 = tf.layers.max_pooling2d(conv3, [3,3], [1,1], "SAME", name="maxpool_3")
+            conv4 = tf.layers.conv2d(pool3, 256, [3,3], [1,1], "SAME", name="conv2d_4")
+            pool4 = tf.layers.max_pooling2d(conv4, [3,3], [2,2], "SAME", name="maxpool_4")
+            conv5 = tf.layers.conv2d(pool4, 512, [3,3], [1,1], "SAME", name="conv2d_5")
+            pool5 = tf.layers.max_pooling2d(conv5, [3,3], [2,2], "SAME", name="maxpool_5")
+            conv6 = tf.layers.conv2d(pool5, 512, [3,3], [1,1], "SAME", name="conv2d_6")
+            pool6 = tf.layers.max_pooling2d(conv6, [3,3], [2,2], "SAME", name="maxpool_6")
+            conv7 = tf.layers.conv2d(pool6, 512, [3,3], [1,1], "SAME", name="conv2d_7")
+
+            self._features = tf.layers.max_pooling2d(conv7, [3,3], [2,2],"SAME", name="maxpool_7")
 
     def return_features(self):
         return self._features
@@ -183,10 +198,13 @@ class VideoClassifier():
         self._num_class = args.num_classes
 
         with tf.variable_scope("CLASSIFIER"):
-            #end_point = tf.squeeze(features, axis=1)
             end_point = tf.reshape(features, [features.shape[0],-1])
-            self.logit = tf.layers.dense(end_point, self._num_class, 
-             kernel_initializer=tf.variance_scaling_initializer())
+
+            mid_logit = tf.layers.dense(end_point, 64, 
+             kernel_initializer=tf.variance_scaling_initializer(), name="dense_1")
+
+            self.logit = tf.layers.dense(mid_logit, self._num_class, 
+             kernel_initializer=tf.variance_scaling_initializer(), name="dense_2")
 
     def get_logit(self):
         return self.logit

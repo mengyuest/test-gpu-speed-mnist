@@ -23,17 +23,17 @@ class ImageLoader(object):
             [tf.convert_to_tensor(self.image_dirs, dtype=tf.string),
              tf.convert_to_tensor(self.label_vals, dtype=tf.string)],
              shuffle=False,
-             seed=1007,
-             capacity=1024
+             seed=1007#,
+             #capacity=16
         )
 
         self.image, self.label, self.image_name = self.read_data()
     
-    def dequeue(self, num_threads=256):
+    def dequeue(self, num_threads):
         return tf.train.batch([self.image, self.label, self.image_name],
-                              batch_size = self._batch_size)
-                              #capacity = 128,
-                              #num_threads = num_threads)
+                              batch_size = self._batch_size,
+                              #capacity = 16,
+                              num_threads = num_threads)
 
     def read_data(self):
         with tf.variable_scope("NORMALIZE_IMAGES"):
@@ -47,18 +47,13 @@ class ImageLoader(object):
             image = (tf.cast(image, tf.float32))
             label = (tf.cast(label, tf.int32))
             image_name = (tf.cast(image_name, tf.string))
-            print(image, label, image_name)
         return image, label, image_name
     
     def py_function(self, queue_data):
-        #print("Q:",queue_data)
         image_name = self._data_split+"_"+queue_data[0].decode('utf-8').split("/")[-1].split(".")[0]
         image = np.load(queue_data[0].decode('utf-8'))
-        #print("read image %s"%(queue_data[0].decode('utf-8')))
         label = int(queue_data[1].decode('utf-8'))
-        #print("convert label: %d"%(label))
-        print("%s img:%s lbl:%d"%(image_name,image.shape, label))
-        return image.astype(np.float32), label, image_name
+        return np.array(image,dtype=np.float32), np.array(label,dtype=np.int32), image_name
 
 
 def load_data(args):
@@ -70,6 +65,6 @@ def load_data(args):
     with tf.name_scope("IMAGE_LOADER"):
         train_reader = ImageLoader(args, "train")
         val_reader = ImageLoader(args, "valid")
-        output_dic["train_batch"] = train_reader.dequeue()
-        output_dic["val_batch"] = val_reader.dequeue()
+        output_dic["train_batch"] = train_reader.dequeue(args.num_threads)
+        output_dic["val_batch"] = val_reader.dequeue(args.num_threads)
     return output_dic
